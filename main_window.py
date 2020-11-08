@@ -10,8 +10,8 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         uic.loadUi('ui_files/timetracker_main.ui', self)
-        self.init_ui()
         self.connection = sqlite3.connect('database.sqlite')
+        self.init_ui()
 
     def init_ui(self):
         self.project_editor_button.clicked.connect(self.show_project_editor)
