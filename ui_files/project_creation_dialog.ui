@@ -70,7 +70,7 @@
      <item>
       <widget class="QPushButton" name="create_button">
        <property name="text">
-        <string>Создать проект</string>
+        <string>Применить</string>
        </property>
       </widget>
      </item>
