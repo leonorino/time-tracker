@@ -2,7 +2,8 @@ from sqlite3 import IntegrityError
 from PyQt5 import uic
 from PyQt5.QtWidgets import QDialog, QWidget, QListWidgetItem
 from PyQt5.QtWidgets import QMessageBox, QColorDialog
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtGui import QPixmap, QPainter, QColor, QPainterPath
 
 
 class ProjectListWidget(QWidget):
@@ -18,12 +19,62 @@ class ProjectListWidget(QWidget):
         self.tasks_label.setText(f'Количество подзадач: {self.info[3]}')
 
 
+class TaskListWidget(QWidget):
+    def __init__(self, task_id, project_id, name, total_duration,
+                 is_completed, color, connection):
+        super().__init__()
+        uic.loadUi('ui_files/task_listwidget.ui', self)
+        color = tuple(map(int, color.split(', ')))
+        self.info = [task_id, project_id, name, total_duration, is_completed, color]
+        self.connection = connection
+        self.init_ui()
+
+    def set_rounded_pixmap(self):
+        size = self.picture_label.minimumSizeHint().height()
+        radius = size // 2
+        color = QColor(*self.info[5])
+        target = QPixmap(QSize(size, size))
+        target.fill(Qt.transparent)
+        painter = QPainter()
+        painter.begin(target)
+
+        pixmap = QPixmap(QSize(size, size))
+        pixmap.fill(color)
+
+        # Разобраться как это работает, пока что просто копипаста из интернета.
+        path = QPainterPath()
+        path.addRoundedRect(0, 0, size, size, radius, radius)
+        painter.setClipPath(path)
+        painter.drawPixmap(0, 0, pixmap)
+        painter.end()
+        self.picture_label.setPixmap(target)
+
+    def init_ui(self):
+        self.set_rounded_pixmap()
+        self.state_checkbox.stateChanged.connect(self.checkbox_state_changed)
+        self.name_label.setText(f'Подзадача: {self.info[2]}')
+        self.state_checkbox.setChecked(bool(self.info[4]))
+        self.duration_label.setText(f'Затрачено времени: {self.info[3]}')
+
+    def checkbox_state_changed(self, new_state):
+        new_state = 1 if new_state else 0
+        cursor = self.connection.cursor()
+        QUERY = '''
+        UPDATE tasks SET
+            is_completed = ?
+            WHERE id = ?
+        '''
+        cursor.execute(QUERY, (new_state, self.info[0]))
+        self.connection.commit()
+
+
 class ProjectEditDialog(QDialog):
     def __init__(self, connection, update_id=None):
         super().__init__()
         uic.loadUi('ui_files/project_creation_dialog.ui', self)
         self.connection = connection
         self.update_id = update_id
+        self.new_name = None
         self.init_ui()
 
     def init_ui(self):
@@ -135,6 +186,8 @@ class ProjectInfoDialog(QDialog):
         self.delete_button.clicked.connect(self.show_delete_dialog)
         self.create_button.clicked.connect(self.show_task_add_dialog)
 
+        self.update_tasks_list()
+
     def show_edit_dialog(self):
         dialog = ProjectEditDialog(self.connection, self.info[0])
         dialog.exec()
@@ -142,9 +195,34 @@ class ProjectInfoDialog(QDialog):
             self.info[1] = dialog.new_name
         self.name_label.setText(f'Проект "{self.info[1]}"')
 
+    def update_tasks_list(self):
+        self.tasks_list.clear()
+        QUERY = '''
+        SELECT id FROM tasks
+            WHERE project_id = ?
+        '''
+
+        cursor = self.connection.cursor()
+        ids = [el[0] for el in cursor.execute(QUERY, (self.info[0],)).fetchall()]
+
+        for task_id in ids:
+            QUERY = '''
+            SELECT name, total_duration, is_completed, color FROM tasks
+                WHERE id = ?
+            '''
+
+            elements = cursor.execute(QUERY, (task_id,)).fetchone()
+
+            widget = TaskListWidget(task_id, self.info[0], *elements, self.connection)
+            item = QListWidgetItem()
+            item.setSizeHint(widget.minimumSizeHint())
+            self.tasks_list.addItem(item)
+            self.tasks_list.setItemWidget(item, widget)
+
     def show_task_add_dialog(self):
         dialog = TaskEditDialog(self.connection, project_id=self.info[0])
         dialog.exec()
+        self.update_tasks_list()
 
     def show_delete_dialog(self):
         dialog = QMessageBox()
