@@ -1,7 +1,7 @@
 from sqlite3 import IntegrityError
 from PyQt5 import uic
 from PyQt5.QtWidgets import QDialog, QWidget, QListWidgetItem
-from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtWidgets import QMessageBox, QColorDialog
 from PyQt5.QtCore import Qt
 
 
@@ -32,7 +32,7 @@ class ProjectEditDialog(QDialog):
         self.create_button.clicked.connect(self.create_record)
 
     def create_record(self):
-        name = self.name_edit.text().strip()
+        name = self.name_edit.text().strip().lower()
         if not name:
             self.name_label.setStyleSheet('background-color: rgb(255, 0, 0)')
             self.error_label.setText('Вы не ввели название проекта')
@@ -128,9 +128,12 @@ class ProjectInfoDialog(QDialog):
         self.init_ui()
 
     def init_ui(self):
+        self.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
+
         self.name_label.setText(f'Проект "{self.info[1]}"')
         self.edit_button.clicked.connect(self.show_edit_dialog)
         self.delete_button.clicked.connect(self.show_delete_dialog)
+        self.create_button.clicked.connect(self.show_task_add_dialog)
 
     def show_edit_dialog(self):
         dialog = ProjectEditDialog(self.connection, self.info[0])
@@ -138,6 +141,10 @@ class ProjectInfoDialog(QDialog):
         if dialog.new_name is not None:
             self.info[1] = dialog.new_name
         self.name_label.setText(f'Проект "{self.info[1]}"')
+
+    def show_task_add_dialog(self):
+        dialog = TaskEditDialog(self.connection, project_id=self.info[0])
+        dialog.exec()
 
     def show_delete_dialog(self):
         dialog = QMessageBox()
@@ -156,3 +163,71 @@ class ProjectInfoDialog(QDialog):
             self.close()
         else:
             return
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Escape:
+            self.close()
+
+
+class TaskEditDialog(QDialog):
+    def __init__(self, connection, project_id=None, update_id=None):
+        super().__init__()
+        uic.loadUi('ui_files/task_edit_dialog.ui', self)
+        self.connection = connection
+        self.update_id = update_id
+        self.project_id = project_id
+        self.init_ui()
+
+    def init_ui(self):
+        self.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
+        self.color_edit.setEnabled(False)
+        self.create_button.clicked.connect(self.create_record)
+
+    def create_record(self):
+        name = self.name_edit.text().strip().lower()
+        color = self.color_edit.text().strip()
+
+        self.error_label.setText('Нажмите Ctrl + G чтобы открыть средство для подбора цвета')
+        if not name and color:
+            self.error_label.setText('Вы не ввели название подзадачи')
+            self.name_label.setStyleSheet('background-color: rgb(255, 0, 0)')
+            self.color_label.setStyleSheet('')
+        elif name and not color:
+            self.error_label.setText('Вы не выбрали цвет')
+            self.name_label.setStyleSheet('')
+            self.color_label.setStyleSheet('background-color: rgb(255, 0, 0)')
+        elif not name and not color:
+            self.error_label.setText('Вы не ввели название и не выбрали цвет')
+            self.name_label.setStyleSheet('background-color: rgb(255, 0, 0)')
+            self.color_label.setStyleSheet('background-color: rgb(255, 0, 0)')
+
+        cursor = self.connection.cursor()
+
+        if self.update_id is not None:
+            QUERY = '''
+            UPDATE tasks SET
+                name = '{}',
+                color = '{}'
+                WHERE id = {}
+            '''.format(name, color, self.update_id)
+        else:
+            QUERY = '''
+            INSERT INTO tasks(project_id, name, color) VALUES('{}', '{}', '{}')
+            '''.format(self.project_id, name, color)
+
+        try:
+            cursor.execute(QUERY)
+        except IntegrityError:
+            self.error_label.setText('Подзадача с таким именем/названием уже существует')
+            return
+
+        self.connection.commit()
+        self.close()
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Escape:
+            self.close()
+        elif event.modifiers() == Qt.ControlModifier and event.key() == Qt.Key_G:
+            dialog = QColorDialog()
+            result = dialog.getColor().getRgb()[:-1]
+            self.color_edit.setText(f'{result[0]}, {result[1]}, {result[2]}')

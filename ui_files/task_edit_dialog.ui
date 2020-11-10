@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Dialog</string>
+   <string>Редактирование задачи</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_2">
    <item>
@@ -25,7 +25,7 @@
         </sizepolicy>
        </property>
        <property name="text">
-        <string>Нажмите G чтобы открыть средство для подбора цвета</string>
+        <string>Нажмите Ctrl + G чтобы открыть средство для подбора цвета</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignCenter</set>
@@ -47,7 +47,7 @@
         <number>7</number>
        </property>
        <item row="0" column="0">
-        <widget class="QLabel" name="label">
+        <widget class="QLabel" name="name_label">
          <property name="text">
           <string>Название подзадачи:</string>
          </property>
@@ -57,14 +57,18 @@
         <widget class="QLineEdit" name="name_edit"/>
        </item>
        <item row="1" column="0">
-        <widget class="QLabel" name="label_2">
+        <widget class="QLabel" name="color_label">
          <property name="text">
           <string>Цвет подзадачи:</string>
          </property>
         </widget>
        </item>
        <item row="1" column="1">
-        <widget class="QLineEdit" name="color_edit"/>
+        <widget class="QLineEdit" name="color_edit">
+         <property name="dragEnabled">
+          <bool>false</bool>
+         </property>
+        </widget>
        </item>
       </layout>
      </item>
