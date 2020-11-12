@@ -185,6 +185,7 @@ class ProjectInfoDialog(QDialog):
         self.edit_button.clicked.connect(self.show_edit_dialog)
         self.delete_button.clicked.connect(self.show_delete_dialog)
         self.create_button.clicked.connect(self.show_task_add_dialog)
+        self.tasks_list.itemDoubleClicked.connect(self.show_task_info_dialog)
 
         self.update_tasks_list()
 
@@ -224,6 +225,12 @@ class ProjectInfoDialog(QDialog):
         dialog.exec()
         self.update_tasks_list()
 
+    def show_task_info_dialog(self, item):
+        info = self.tasks_list.itemWidget(item).info
+        dialog = TaskInfoDialog(self.connection, info)
+        dialog.exec()
+        self.update_tasks_list()
+
     def show_delete_dialog(self):
         dialog = QMessageBox()
         dialog.setWindowTitle('Удаление проекта')
@@ -254,6 +261,8 @@ class TaskEditDialog(QDialog):
         self.connection = connection
         self.update_id = update_id
         self.project_id = project_id
+        self.new_name = None
+        self.new_color = None
         self.init_ui()
 
     def init_ui(self):
@@ -264,20 +273,25 @@ class TaskEditDialog(QDialog):
     def create_record(self):
         name = self.name_edit.text().strip().lower()
         color = self.color_edit.text().strip()
+        print(name, color)
+        print(name and not color)
 
         self.error_label.setText('Нажмите Ctrl + G чтобы открыть средство для подбора цвета')
         if not name and color:
             self.error_label.setText('Вы не ввели название подзадачи')
             self.name_label.setStyleSheet('background-color: rgb(255, 0, 0)')
             self.color_label.setStyleSheet('')
+            return
         elif name and not color:
             self.error_label.setText('Вы не выбрали цвет')
             self.name_label.setStyleSheet('')
             self.color_label.setStyleSheet('background-color: rgb(255, 0, 0)')
+            return
         elif not name and not color:
             self.error_label.setText('Вы не ввели название и не выбрали цвет')
             self.name_label.setStyleSheet('background-color: rgb(255, 0, 0)')
             self.color_label.setStyleSheet('background-color: rgb(255, 0, 0)')
+            return
 
         cursor = self.connection.cursor()
 
@@ -290,14 +304,19 @@ class TaskEditDialog(QDialog):
             '''.format(name, color, self.update_id)
         else:
             QUERY = '''
-            INSERT INTO tasks(project_id, name, color) VALUES('{}', '{}', '{}')
+            INSERT INTO tasks(project_id, name, color) VALUES({}, '{}', '{}')
             '''.format(self.project_id, name, color)
+
+        print(QUERY)
 
         try:
             cursor.execute(QUERY)
         except IntegrityError:
-            self.error_label.setText('Подзадача с таким именем/названием уже существует')
+            self.error_label.setText('Подзадача с таким именем/цветом уже существует')
             return
+
+        self.new_name = name
+        self.new_color = color
 
         self.connection.commit()
         self.close()
@@ -309,3 +328,44 @@ class TaskEditDialog(QDialog):
             dialog = QColorDialog()
             result = dialog.getColor().getRgb()[:-1]
             self.color_edit.setText(f'{result[0]}, {result[1]}, {result[2]}')
+
+
+class TaskInfoDialog(QDialog):
+    def __init__(self, connection, info):
+        super().__init__()
+        uic.loadUi('ui_files/task_info_dialog.ui', self)
+        self.connection = connection
+        self.info = info
+        self.init_ui()
+
+    def init_ui(self):
+        self.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
+
+        self.name_label.setText(f'Подзадача "{self.info[2]}"')
+        self.edit_button.clicked.connect(self.show_edit_dialog)
+        self.delete_button.clicked.connect(self.show_delete_dialog)
+
+    def show_edit_dialog(self):
+        dialog = TaskEditDialog(self.connection, update_id=self.info[0])
+        dialog.exec()
+        if dialog.new_name is not None:
+            self.info[2] = dialog.new_name
+        self.name_label.setText(f'Подзадача "{self.info[2]}"')
+
+    def show_delete_dialog(self):
+        dialog = QMessageBox()
+        dialog.setWindowTitle('Удаление проекта')
+        dialog.setText('Действительно хотите удалить подзадачу?')
+        dialog.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        result = dialog.exec()
+        if result == QMessageBox.Yes:
+            cursor = self.connection.cursor()
+            QUERY = '''
+            DELETE FROM tasks
+                WHERE id = ?
+            '''
+            cursor.execute(QUERY, (self.info[0],))
+            self.connection.commit()
+            self.close()
+        else:
+            return
