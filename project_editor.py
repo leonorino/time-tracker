@@ -240,6 +240,11 @@ class ProjectInfoDialog(QDialog):
         if result == QMessageBox.Yes:
             cursor = self.connection.cursor()
             QUERY = '''
+            DELETE FROM tasks
+                WHERE project_id = ?
+            '''
+            cursor.execute(QUERY, (self.info[0],))
+            QUERY = '''
             DELETE FROM projects
                 WHERE id = ?
             '''
@@ -273,8 +278,6 @@ class TaskEditDialog(QDialog):
     def create_record(self):
         name = self.name_edit.text().strip().lower()
         color = self.color_edit.text().strip()
-        print(name, color)
-        print(name and not color)
 
         self.error_label.setText('Нажмите Ctrl + G чтобы открыть средство для подбора цвета')
         if not name and color:
@@ -306,8 +309,6 @@ class TaskEditDialog(QDialog):
             QUERY = '''
             INSERT INTO tasks(project_id, name, color) VALUES({}, '{}', '{}')
             '''.format(self.project_id, name, color)
-
-        print(QUERY)
 
         try:
             cursor.execute(QUERY)
@@ -354,7 +355,7 @@ class TaskInfoDialog(QDialog):
 
     def show_delete_dialog(self):
         dialog = QMessageBox()
-        dialog.setWindowTitle('Удаление проекта')
+        dialog.setWindowTitle('Удаление подзадачи')
         dialog.setText('Действительно хотите удалить подзадачу?')
         dialog.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
         result = dialog.exec()
@@ -365,6 +366,13 @@ class TaskInfoDialog(QDialog):
                 WHERE id = ?
             '''
             cursor.execute(QUERY, (self.info[0],))
+
+            QUERY = '''
+            DELETE FROM records
+                WHERE task_id = ?
+            '''
+            cursor.execute(QUERY, (self.info[0],))
+
             self.connection.commit()
             self.close()
         else:
