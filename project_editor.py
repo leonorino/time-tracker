@@ -4,12 +4,12 @@ from PyQt5.QtWidgets import QDialog, QWidget, QListWidgetItem
 from PyQt5.QtWidgets import QMessageBox, QColorDialog
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QPixmap, QPainter, QColor, QPainterPath
+from compiled_interfaces import *
 
-
-class ProjectListWidget(QWidget):
+class ProjectListWidget(ProjectListWidgetInterface, QWidget):
     def __init__(self, project_id, name, total_duration, tasks_amount):
         super().__init__()
-        uic.loadUi('ui_files/project_listwidget.ui', self)
+        self.setupUi(self)
         self.info = [project_id, name, total_duration, tasks_amount]
         self.init_ui()
 
@@ -19,11 +19,11 @@ class ProjectListWidget(QWidget):
         self.tasks_label.setText(f'Количество подзадач: {self.info[3]}')
 
 
-class TaskListWidget(QWidget):
+class TaskListWidget(TaskListWidgetInterface, QWidget):
     def __init__(self, task_id, project_id, name, total_duration,
                  is_completed, color, connection):
         super().__init__()
-        uic.loadUi('ui_files/task_listwidget.ui', self)
+        self.setupUi(self)
         color = tuple(map(int, color.split(', ')))
         self.info = [task_id, project_id, name, total_duration, is_completed, color]
         self.connection = connection
@@ -68,10 +68,10 @@ class TaskListWidget(QWidget):
         self.connection.commit()
 
 
-class ProjectEditDialog(QDialog):
+class ProjectEditDialog(ProjectEditDialogInterface, QDialog):
     def __init__(self, connection, update_id=None):
         super().__init__()
-        uic.loadUi('ui_files/project_creation_dialog.ui', self)
+        self.setupUi(self)
         self.connection = connection
         self.update_id = update_id
         self.new_name = None
@@ -112,10 +112,10 @@ class ProjectEditDialog(QDialog):
         self.close()
 
 
-class ProjectEditorDialog(QDialog):
+class ProjectEditorDialog(ProjectEditorDialogInterface, QDialog):
     def __init__(self, connection):
         super().__init__()
-        uic.loadUi('ui_files/project_editor_dialog.ui', self)
+        self.setupUi(self)
         self.connection = connection
         self.init_ui()
 
@@ -170,10 +170,10 @@ class ProjectEditorDialog(QDialog):
             self.close()
 
 
-class ProjectInfoDialog(QDialog):
+class ProjectInfoDialog(ProjectInfoDialogInterface, QDialog):
     def __init__(self, connection, info):
         super().__init__()
-        uic.loadUi('ui_files/project_info_dialog.ui', self)
+        self.setupUi(self)
         self.connection = connection
         self.info = info
         self.init_ui()
@@ -259,10 +259,10 @@ class ProjectInfoDialog(QDialog):
             self.close()
 
 
-class TaskEditDialog(QDialog):
+class TaskEditDialog(TaskEditDialogInterface, QDialog):
     def __init__(self, connection, project_id=None, update_id=None):
         super().__init__()
-        uic.loadUi('ui_files/task_edit_dialog.ui', self)
+        self.setupUi(self)
         self.connection = connection
         self.update_id = update_id
         self.project_id = project_id
@@ -331,10 +331,10 @@ class TaskEditDialog(QDialog):
             self.color_edit.setText(f'{result[0]}, {result[1]}, {result[2]}')
 
 
-class TaskInfoDialog(QDialog):
+class TaskInfoDialog(TaskInfoDialogInterface, QDialog):
     def __init__(self, connection, info):
         super().__init__()
-        uic.loadUi('ui_files/task_info_dialog.ui', self)
+        self.setupUi(self)
         self.connection = connection
         self.info = info
         self.init_ui()

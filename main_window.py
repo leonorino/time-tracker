@@ -8,12 +8,13 @@ from PyQt5.QtWidgets import QListWidgetItem, QSystemTrayIcon, QStyle
 from PyQt5.QtWidgets import QAction, QMenu
 from PyQt5.QtCore import Qt, QTimer
 from project_editor import ProjectEditorDialog
+from compiled_interfaces import *
 
 
-class SessionListWidget(QWidget):
+class SessionListWidget(SessionListWidgetInterface, QWidget):
     def __init__(self, *info):
         super().__init__()
-        uic.loadUi('ui_files/session_listwidget.ui', self)
+        self.setupUi(self)
         self.info = info
         self.init_ui()
 
@@ -25,10 +26,10 @@ class SessionListWidget(QWidget):
         self.project_label.setText(f'Проект: {self.info[5]}')
 
 
-class MainWindow(QMainWindow):
+class MainWindow(MainWindowInterface, QMainWindow):
     def __init__(self):
         super().__init__()
-        uic.loadUi('ui_files/timetracker_main.ui', self)
+        self.setupUi(self)
         self.connection = sqlite3.connect('database.sqlite')
         self.countdown_start_time = None
         self.selected_task = None
