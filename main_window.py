@@ -2,6 +2,8 @@ import time
 from datetime import datetime
 import sqlite3
 import sys
+import matplotlib
+from matplotlib import pyplot as plt
 from PyQt5 import uic
 from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QWidget
 from PyQt5.QtWidgets import QListWidgetItem, QSystemTrayIcon, QStyle
@@ -9,6 +11,8 @@ from PyQt5.QtWidgets import QAction, QMenu
 from PyQt5.QtCore import Qt, QTimer
 from project_editor import ProjectEditorDialog
 from compiled_interfaces import *
+
+matplotlib.use('Qt5Agg')
 
 
 class SessionListWidget(SessionListWidgetInterface, QWidget):
@@ -94,7 +98,7 @@ class MainWindow(MainWindowInterface, QMainWindow):
         else:
             cursor = self.connection.cursor()
             QUERY = '''
-            INSERT INTO 
+            INSERT INTO
                 records(task_id, start_time, end_time, duration)
                 VALUES(?, ?, ?, ?)
             '''

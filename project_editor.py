@@ -1,4 +1,5 @@
 from sqlite3 import IntegrityError
+from datetime import datetime
 from PyQt5 import uic
 from PyQt5.QtWidgets import QDialog, QWidget, QListWidgetItem
 from PyQt5.QtWidgets import QMessageBox, QColorDialog
@@ -7,10 +8,11 @@ from PyQt5.QtGui import QPixmap, QPainter, QColor, QPainterPath
 from compiled_interfaces import *
 
 class ProjectListWidget(ProjectListWidgetInterface, QWidget):
-    def __init__(self, project_id, name, total_duration, tasks_amount):
+    def __init__(self, *args):
         super().__init__()
         self.setupUi(self)
-        self.info = [project_id, name, total_duration, tasks_amount]
+        args = list(args)
+        self.info = args
         self.init_ui()
 
     def init_ui(self):
@@ -20,12 +22,12 @@ class ProjectListWidget(ProjectListWidgetInterface, QWidget):
 
 
 class TaskListWidget(TaskListWidgetInterface, QWidget):
-    def __init__(self, task_id, project_id, name, total_duration,
-                 is_completed, color, connection):
+    def __init__(self, *args, connection):
         super().__init__()
         self.setupUi(self)
-        color = tuple(map(int, color.split(', ')))
-        self.info = [task_id, project_id, name, total_duration, is_completed, color]
+        args = list(args)
+        args[5] = map(int, args[5].split(', '))
+        self.info = args
         self.connection = connection
         self.init_ui()
 
@@ -41,7 +43,6 @@ class TaskListWidget(TaskListWidgetInterface, QWidget):
         pixmap = QPixmap(QSize(size, size))
         pixmap.fill(color)
 
-        # Разобраться как это работает, пока что просто копипаста из интернета.
         path = QPainterPath()
         path.addRoundedRect(0, 0, size, size, radius, radius)
         painter.setClipPath(path)
@@ -92,8 +93,8 @@ class ProjectEditDialog(ProjectEditDialogInterface, QDialog):
         cursor = self.connection.cursor()
         if self.update_id is None:
             QUERY = '''
-            INSERT INTO projects(name) VALUES('{}')
-            '''.format(name)
+            INSERT INTO projects(name, creation_date) VALUES('{}', '{}')
+            '''.format(name, datetime.now().isoformat())
         else:
             QUERY = '''
             UPDATE projects SET name = '{}'
@@ -208,13 +209,13 @@ class ProjectInfoDialog(ProjectInfoDialogInterface, QDialog):
 
         for task_id in ids:
             QUERY = '''
-            SELECT name, total_duration, is_completed, color FROM tasks
+            SELECT name, total_duration, is_completed, color, creation_date FROM tasks
                 WHERE id = ?
             '''
 
             elements = cursor.execute(QUERY, (task_id,)).fetchone()
 
-            widget = TaskListWidget(task_id, self.info[0], *elements, self.connection)
+            widget = TaskListWidget(task_id, self.info[0], *elements, connection=self.connection)
             item = QListWidgetItem()
             item.setSizeHint(widget.minimumSizeHint())
             self.tasks_list.addItem(item)
@@ -307,8 +308,8 @@ class TaskEditDialog(TaskEditDialogInterface, QDialog):
             '''.format(name, color, self.update_id)
         else:
             QUERY = '''
-            INSERT INTO tasks(project_id, name, color) VALUES({}, '{}', '{}')
-            '''.format(self.project_id, name, color)
+            INSERT INTO tasks(project_id, name, color, creation_date) VALUES({}, '{}', '{}', '{}')
+            '''.format(self.project_id, name, color, datetime.now().isoformat())
 
         try:
             cursor.execute(QUERY)
@@ -345,6 +346,27 @@ class TaskInfoDialog(TaskInfoDialogInterface, QDialog):
         self.name_label.setText(f'Подзадача "{self.info[2]}"')
         self.edit_button.clicked.connect(self.show_edit_dialog)
         self.delete_button.clicked.connect(self.show_delete_dialog)
+
+        self.prepare_chart()
+
+    def prepare_chart(self):
+        cursor = self.connection.cursor()
+        QUERY = '''
+        SELECT * FROM records WHERE task_id = {}
+            ORDER BY datetime(start_time) ASC
+        '''.format(self.info[0])
+        plot = (list(), list())
+        duration = 0
+        start_time = datetime.fromisoformat(self.info[-1])
+        result = cursor.execute(QUERY).fetchall()
+        for line in result:
+            session_start_time = datetime.fromisoformat(line[2])
+            delta = (session_start_time - start_time).seconds // 60
+            duration += line[4] / 60
+            plot[0].append(delta)
+            plot[1].append(duration)
+
+        self.chart_widget.axes.plot(*plot)
 
     def show_edit_dialog(self):
         dialog = TaskEditDialog(self.connection, update_id=self.info[0])

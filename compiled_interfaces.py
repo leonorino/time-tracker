@@ -1,4 +1,9 @@
+import matplotlib
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
+from matplotlib.figure import Figure
 from PyQt5 import QtCore, QtGui, QtWidgets
+
+matplotlib.use('Qt5Agg')
 
 
 class MainWindowInterface(object):
@@ -259,6 +264,10 @@ class TaskInfoDialogInterface(object):
         self.delete_button.setObjectName("delete_button")
         self.horizontalLayout.addWidget(self.delete_button)
         self.verticalLayout.addLayout(self.horizontalLayout)
+        figure = Figure()
+        self.chart_widget = FigureCanvasQTAgg(figure)
+        self.chart_widget.axes = figure.add_subplot(111)
+        self.verticalLayout.addWidget(self.chart_widget)
         self.label_2 = QtWidgets.QLabel(Dialog)
         font = QtGui.QFont()
         font.setPointSize(15)
