@@ -138,10 +138,10 @@ class ProjectEditorDialog(ProjectEditorDialogInterface, QDialog):
 
         for project_id in ids:
             QUERY = '''
-            SELECT name, total_duration FROM projects
+            SELECT name, total_duration, creation_date FROM projects
                 WHERE id = ?
             '''
-            name, duration = cursor.execute(QUERY, (project_id,)).fetchone()
+            name, duration, creation_date = cursor.execute(QUERY, (project_id,)).fetchone()
 
             QUERY = '''
             SELECT COUNT(*) FROM tasks
@@ -149,7 +149,7 @@ class ProjectEditorDialog(ProjectEditorDialogInterface, QDialog):
             '''
             tasks = cursor.execute(QUERY, (project_id,)).fetchone()[0]
 
-            widget = ProjectListWidget(project_id, name, duration, tasks)
+            widget = ProjectListWidget(project_id, name, duration, tasks, creation_date)
             item = QListWidgetItem()
             item.setSizeHint(widget.minimumSizeHint())
             self.projects_list.addItem(item)
@@ -189,6 +189,7 @@ class ProjectInfoDialog(ProjectInfoDialogInterface, QDialog):
         self.tasks_list.itemDoubleClicked.connect(self.show_task_info_dialog)
 
         self.update_tasks_list()
+        self.prepare_chart()
 
     def show_edit_dialog(self):
         dialog = ProjectEditDialog(self.connection, self.info[0])
@@ -254,6 +255,44 @@ class ProjectInfoDialog(ProjectInfoDialogInterface, QDialog):
             self.close()
         else:
             return
+
+    def prepare_chart(self):
+        cursor = self.connection.cursor()
+        QUERY = '''
+        SELECT * FROM records
+            WHERE task_id IN (
+                SELECT id FROM tasks
+                    WHERE project_id = ?
+            )
+        '''
+        data = dict()
+        result = cursor.execute(QUERY, (self.info[0], )).fetchall()
+        creation_date = datetime.fromisoformat(self.info[-1])
+        for line in result:
+            task_id = line[1]
+            start_delta = (datetime.fromisoformat(line[2]) - creation_date).seconds / 60
+            duration = (datetime.fromisoformat(line[3]) - datetime.fromisoformat(line[2])).seconds / 60
+            if task_id in data:
+                data[task_id].append((start_delta, duration))
+            else:
+                data[task_id] = list()
+                data[task_id].append((start_delta, duration))
+
+        labels = list()
+        for index, (key, data_line) in enumerate(data.items()):
+            QUERY = '''
+            SELECT name, color FROM tasks
+                WHERE id = ?
+            '''
+            result = cursor.execute(QUERY, (key,)).fetchone()
+            labels.append(result[0])
+            color = tuple(map(int, result[1].split(', ')))
+            color = f"#{''.join(f'{hex(c)[2:].upper():0>2}' for c in color)}"
+            self.chart_widget.axes.broken_barh([*data_line], [5 + 15 * index, 10], facecolors=color)
+
+        self.chart_widget.axes.set_yticks([10 + 15 * index for index in range(len(labels))])
+        self.chart_widget.axes.set_yticklabels(labels)
+        self.chart_widget.axes.grid(True)
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
