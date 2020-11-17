@@ -1,3 +1,4 @@
+from datetime import datetime
 from PyQt5.QtWidgets import QDialog, QWidget, QListWidgetItem
 from PyQt5.QtWidgets import QMessageBox, QColorDialog
 from PyQt5.QtCore import Qt, QSize
@@ -275,12 +276,13 @@ class ProjectInfoDialog(ProjectInfoDialogInterface, QDialog):
                     WHERE project_id = ?
             )
         '''
-        # Словарь для сохранения данных в формате {id подзадачи: [(начало интервала, конец интервала)]}
+        # Словарь для сохранения данных в формате {id подзадачи: [(начало интервала, длительность интервала)]}
         data = dict()
         result = cursor.execute(QUERY, (self.info[0], )).fetchall()
         creation_date = datetime.fromisoformat(self.info[-1]) # Сохраняем дату создания проекта, чтобы в дальнейшем высчитывать секунды
         for line in result:
             task_id = line[1]
+            # Высчитываем количество минут со времени создания проекта
             start_delta = (datetime.fromisoformat(line[2]) - creation_date).seconds / 60
             duration = (datetime.fromisoformat(line[3]) - datetime.fromisoformat(line[2])).seconds / 60
             if task_id in data:
@@ -296,8 +298,11 @@ class ProjectInfoDialog(ProjectInfoDialogInterface, QDialog):
                 WHERE id = ?
             '''
             result = cursor.execute(QUERY, (key,)).fetchone()
+            # Добавляем название задачи в список заголовков
             labels.append(result[0])
+            # Переводим строку с цветом в rgb-кортеж
             color = tuple(map(int, result[1].split(', ')))
+            # Переводим цвет в hex-формат
             color = f"#{''.join(f'{hex(c)[2:].upper():0>2}' for c in color)}"
             self.chart_widget.axes.broken_barh([*data_line], [5 + 15 * index, 10], facecolors=color)
 

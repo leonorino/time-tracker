@@ -171,6 +171,7 @@ class ProjectInfoDialogInterface(object):
         self.tasks_list = QtWidgets.QListWidget(Dialog)
         self.tasks_list.setObjectName("tasks_list")
         self.verticalLayout.addWidget(self.tasks_list)
+        # Далее создаются фигура и холст для графиков
         figure = Figure()
         self.chart_widget = FigureCanvasQTAgg(figure)
         self.chart_widget.axes = figure.add_subplot(111)
@@ -268,6 +269,7 @@ class TaskInfoDialogInterface(object):
         self.delete_button.setObjectName("delete_button")
         self.horizontalLayout.addWidget(self.delete_button)
         self.verticalLayout.addLayout(self.horizontalLayout)
+        # Далее создаётся фигура и холст для графиков
         figure = Figure()
         self.chart_widget = FigureCanvasQTAgg(figure)
         self.chart_widget.axes = figure.add_subplot(111)
