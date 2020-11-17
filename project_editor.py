@@ -1,12 +1,9 @@
-from sqlite3 import IntegrityError
-from datetime import datetime
-from PyQt5 import uic
 from PyQt5.QtWidgets import QDialog, QWidget, QListWidgetItem
 from PyQt5.QtWidgets import QMessageBox, QColorDialog
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QPixmap, QPainter, QColor, QPainterPath
 from compiled_interfaces import *
-
+    
 class ProjectListWidget(ProjectListWidgetInterface, QWidget):
     def __init__(self, *args):
         super().__init__()
@@ -26,15 +23,18 @@ class TaskListWidget(TaskListWidgetInterface, QWidget):
         super().__init__()
         self.setupUi(self)
         args = list(args)
+        # разбиваем строку с цветом на кортеж из 3-х чисел
         args[5] = map(int, args[5].split(', '))
         self.info = args
         self.connection = connection
         self.init_ui()
 
     def set_rounded_pixmap(self):
+        # Получаем минимальную высоту, которую может занимать Label
         size = self.picture_label.minimumSizeHint().height()
         radius = size // 2
         color = QColor(*self.info[5])
+        # Создаём прозрачный QPixmap, на который будем накладывать иконку
         target = QPixmap(QSize(size, size))
         target.fill(Qt.transparent)
         painter = QPainter()
@@ -43,9 +43,15 @@ class TaskListWidget(TaskListWidgetInterface, QWidget):
         pixmap = QPixmap(QSize(size, size))
         pixmap.fill(color)
 
+        # Создаём объект, который будет хранить инструкции для рисования круга
+        # В данном случае можно было обойтись без него, он используется для рисования
+        # более сложных фигур, особенно когда нужно рисовать их несколько раз
         path = QPainterPath()
         path.addRoundedRect(0, 0, size, size, radius, radius)
         painter.setClipPath(path)
+
+        # Накладываем содержимое объекта pixmap на target
+        # В данном случае накладываем круг на прозрачное изображение
         painter.drawPixmap(0, 0, pixmap)
         painter.end()
         self.picture_label.setPixmap(target)
@@ -79,6 +85,7 @@ class ProjectEditDialog(ProjectEditDialogInterface, QDialog):
         self.init_ui()
 
     def init_ui(self):
+        # Убираем знак вопроса из окна QDialog, так как он нам не нужен
         self.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
 
         self.create_button.clicked.connect(self.create_record)
@@ -121,6 +128,7 @@ class ProjectEditorDialog(ProjectEditorDialogInterface, QDialog):
         self.init_ui()
 
     def init_ui(self):
+        # Убираем знак вопроса из окна QDialog, так как он нам не нужен
         self.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
 
         self.create_button.clicked.connect(self.show_creation_dialog)
@@ -180,6 +188,7 @@ class ProjectInfoDialog(ProjectInfoDialogInterface, QDialog):
         self.init_ui()
 
     def init_ui(self):
+        # Убираем знак вопроса из окна QDialog, так как он нам не нужен
         self.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
 
         self.name_label.setText(f'Проект "{self.info[1]}"')
@@ -311,6 +320,7 @@ class TaskEditDialog(TaskEditDialogInterface, QDialog):
         self.init_ui()
 
     def init_ui(self):
+        # Убираем знак вопроса из окна QDialog, так как он нам не нужен
         self.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
         self.color_edit.setEnabled(False)
         self.create_button.clicked.connect(self.create_record)
@@ -380,6 +390,7 @@ class TaskInfoDialog(TaskInfoDialogInterface, QDialog):
         self.init_ui()
 
     def init_ui(self):
+        # Убираем знак вопроса из окна QDialog, так как он нам не нужен
         self.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
 
         self.name_label.setText(f'Подзадача "{self.info[2]}"')

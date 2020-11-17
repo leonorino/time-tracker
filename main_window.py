@@ -188,6 +188,7 @@ class MainWindow(MainWindowInterface, QMainWindow):
         dialog.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
         result = dialog.exec()
         if result == QMessageBox.Yes:
+            # Скрываем окно приложения и показываем иконку в трее
             self.hide()
             self.tray_icon.setVisible(True)
             event.ignore()
