@@ -77,6 +77,7 @@ class TaskListWidget(TaskListWidgetInterface, QWidget):
 
 class ProjectEditDialog(ProjectEditDialogInterface, QDialog):
     def __init__(self, connection, update_id=None):
+        # Если передан update_id, то диалог изменит существующую запись, иначе - создаст новую запись
         super().__init__()
         self.setupUi(self)
         self.connection = connection
@@ -274,9 +275,10 @@ class ProjectInfoDialog(ProjectInfoDialogInterface, QDialog):
                     WHERE project_id = ?
             )
         '''
+        # Словарь для сохранения данных в формате {id подзадачи: [(начало интервала, конец интервала)]}
         data = dict()
         result = cursor.execute(QUERY, (self.info[0], )).fetchall()
-        creation_date = datetime.fromisoformat(self.info[-1])
+        creation_date = datetime.fromisoformat(self.info[-1]) # Сохраняем дату создания проекта, чтобы в дальнейшем высчитывать секунды
         for line in result:
             task_id = line[1]
             start_delta = (datetime.fromisoformat(line[2]) - creation_date).seconds / 60
@@ -310,6 +312,7 @@ class ProjectInfoDialog(ProjectInfoDialogInterface, QDialog):
 
 class TaskEditDialog(TaskEditDialogInterface, QDialog):
     def __init__(self, connection, project_id=None, update_id=None):
+        # Если есть аргумент update_id, диалог обновит запись, иначе должен быть передан project_id для создания новой записи
         super().__init__()
         self.setupUi(self)
         self.connection = connection
@@ -376,6 +379,7 @@ class TaskEditDialog(TaskEditDialogInterface, QDialog):
         if event.key() == Qt.Key_Escape:
             self.close()
         elif event.modifiers() == Qt.ControlModifier and event.key() == Qt.Key_G:
+            # Если нажата комбинация Ctrl + G, показываем диалог для выбора цвета
             dialog = QColorDialog()
             result = dialog.getColor().getRgb()[:-1]
             self.color_edit.setText(f'{result[0]}, {result[1]}, {result[2]}')
@@ -405,9 +409,10 @@ class TaskInfoDialog(TaskInfoDialogInterface, QDialog):
         SELECT * FROM records WHERE task_id = {}
             ORDER BY datetime(start_time) ASC
         '''.format(self.info[0])
+        # Кортеж с двумя списками, в котором будут храниться данные для графика
         plot = (list(), list())
         duration = 0
-        start_time = datetime.fromisoformat(self.info[-1])
+        start_time = datetime.fromisoformat(self.info[-1]) # Сохраняем дату создания подзадачи, чтобы высчитывать секунды в дальнейшем
         result = cursor.execute(QUERY).fetchall()
         for line in result:
             session_start_time = datetime.fromisoformat(line[2])
@@ -416,6 +421,7 @@ class TaskInfoDialog(TaskInfoDialogInterface, QDialog):
             plot[0].append(delta)
             plot[1].append(duration)
 
+        # Устанавливаем данные для графика
         self.chart_widget.axes.plot(*plot)
 
     def show_edit_dialog(self):
@@ -426,6 +432,7 @@ class TaskInfoDialog(TaskInfoDialogInterface, QDialog):
         self.name_label.setText(f'Подзадача "{self.info[2]}"')
 
     def show_delete_dialog(self):
+        # Создание диалога для подтверждения удаления
         dialog = QMessageBox()
         dialog.setWindowTitle('Удаление подзадачи')
         dialog.setText('Действительно хотите удалить подзадачу?')
